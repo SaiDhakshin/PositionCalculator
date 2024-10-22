@@ -2,14 +2,14 @@
   <div>
     <h1>Position Size Calculator</h1>
     <div class="form">
-    <label for="AccountBalance"><div class="form-label"> Account Balance: </div><input v-model="form.accountBalance"/></label>
+    <label for="AccountBalance"><div class="form-label"> Account Balance: </div><input v-model="form.accountBalance" @input="calculateTotal"/></label>
     <!-- <label for="Instrument"><div class="form-label">Instrument: </div><input v-model="form.instrument"/></label> -->
-    <label for="Leverage"><div class="form-label">Leverage: </div><input v-model="form.leverage" @input="calculateEffectiveCapital"/></label>
-    <label for="Riskpercentage"><div class="form-label">Risk Percentage (%): </div><input v-model="form.riskPercentage" @blur="calculateRiskAmount"/></label>
-    <label for="Riskamount"><div class="form-label">Risk Amount: </div><input disabled v-model="form.riskAmount"/></label>
+    <label for="Leverage"><div class="form-label">Leverage: </div><input v-model="form.leverage" @input="calculateEffectiveCapital(); calculateTotal()"/></label>
+    <label for="Riskpercentage"><div class="form-label">Risk Percentage (%): </div><input v-model="form.riskPercentage" @blur="calculateRiskAmount" @input="calculateTotal"/></label>
+    <label for="Riskamount"><div class="form-label">Risk Amount: </div><input disabled v-model="form.riskAmount" /></label>
     <label for="Riskamount"><div class="form-label">Risk Amount Leveraged: </div><input disabled v-model="form.riskAmountLeveraged"/></label>
-    <label for="Entry"><div class="form-label">Entry Price: </div><input v-model="form.entryPrice"/></label>
-    <label for="Exit"><div class="form-label">Exit Price: </div><input v-model="form.exitPrice"/></label>
+    <label for="Entry"><div class="form-label">Entry Price: </div><input v-model="form.entryPrice" @input="calculateTotal"/></label>
+    <label for="Exit"><div class="form-label">Exit Price: </div><input v-model="form.exitPrice" @input="calculateTotal"/></label>
     <label for="NotionalValue"><div class="form-label">Notional Value: </div><input disabled v-model="form.notionalValue"/></label>
     <label for="NotionalValue"><div class="form-label">Notional Value Leveraged: </div><input disabled v-model="form.notionalValueLeveraged"/></label>
     <label for="PositionalSize"><div class="form-label">Position Size excluding Leverage: </div><input disabled v-model="form.positionSize"/></label>
@@ -61,29 +61,36 @@ const calculateEffectiveCapital: any = () => {
   }
 }
 
-const onSubmit: any = () => {
+const calculatePositionSize: any = () => {
+  // Calculate risk per share based on position type
+  let riskPerShare = 0;
+  if (form.value.exitPrice > form.value.entryPrice) {
+    riskPerShare = form.value.entryPrice - form.value.exitPrice; // Long position
+  } else {
+    riskPerShare = form.value.exitPrice - form.value.entryPrice; // Short position
+  }
+
+  // Calculate position size
+  if (Math.abs(riskPerShare) > 0) {
+    form.value.positionSize = Math.abs(form.value.riskAmount / (riskPerShare * form.value.leverage));
+    form.value.positionSizeNotLeveraged = Math.abs(form.value.riskAmount / riskPerShare);
+    form.value.positionSizeLeveraged = Math.abs((form.value.riskAmount / riskPerShare) * form.value.leverage);
+    calculateNotionalValue();
+  } else {
+    form.value.positionSize = 0; // No valid position size if risk per share is not positive
+    form.value.positionSizeLeveraged = 0;
+    form.value.notionalValue = 0;
+    form.value.notionalValueLeveraged = 0;
+  }
+}
+
+const calculateTotal: any = () => {
   calculateRiskAmount();
+  calculatePositionSize(); 
+}
 
-      // Calculate risk per share based on position type
-      let riskPerShare = 0;
-      if (form.value.exitPrice > form.value.entryPrice) {
-        riskPerShare = form.value.entryPrice - form.value.exitPrice; // Long position
-      } else {
-        riskPerShare = form.value.exitPrice - form.value.entryPrice; // Short position
-      }
-
-      // Calculate position size
-      if (Math.abs(riskPerShare) > 0) {
-        form.value.positionSize = form.value.riskAmount / (riskPerShare * form.value.leverage);
-        form.value.positionSizeNotLeveraged = form.value.riskAmount / riskPerShare;
-        form.value.positionSizeLeveraged = (form.value.riskAmount / riskPerShare) * form.value.leverage;
-        calculateNotionalValue();
-      } else {
-        form.value.positionSize = 0; // No valid position size if risk per share is not positive
-        form.value.positionSizeLeveraged = 0;
-        form.value.notionalValue = 0;
-        form.value.notionalValueLeveraged = 0;
-      }
+const onSubmit: any = () => {
+  calculateTotal();
 }
 </script>
 
